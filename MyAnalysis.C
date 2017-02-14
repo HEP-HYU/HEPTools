@@ -71,7 +71,7 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
        h_NCJet_M[ich][i]->Sumw2();
        fOutput->Add(h_NCJet_M[ich][i]);  
 
-       h_MET[ich][i] = new TH1D(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()), "MET", 200,0,400);
+       h_MET[ich][i] = new TH1D(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()), "MET", 40,0,400);
        h_MET[ich][i]->SetXTitle("MET (GeV)");
        h_MET[ich][i]->Sumw2();
        fOutput->Add(h_MET[ich][i]);
@@ -122,7 +122,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    bool passmuon = (mode == 0) && (lepton.Pt() > 30);
    bool passelectron = (mode == 1) && (lepton.Pt() > 35);
 
-   if( passmuon ){
+   if( passmuon || passelectron ){
 
      for (unsigned int iJet = 0; iJet < jet_pT.GetSize() ; ++iJet) {
 
@@ -200,6 +200,7 @@ void MyAnalysis::Terminate()
        fOutput->FindObject(Form("h_NBJet_CSVv2M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_NBJet_CSVv2T_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_NCJet_M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
      }
    }
 
