@@ -49,6 +49,7 @@ def AddBkg(file, name, color, xsection):
 
 ####Users should provide these information 
 SetData("hist_DataSingleMu.root","data", 35867) # for now, combination of muon and electron
+SetData("hist_DataSingleEG.root","data", 35867) # for now, combination of muon and electron
 AddBkg("hist_ttbb.root","ttbb",ROOT.kRed+4, 365.4)
 AddBkg("hist_ttbj.root","ttbj",ROOT.kRed+3, 365.4)
 AddBkg("hist_ttcc.root","ttcc",ROOT.kRed+2, 365.4)
@@ -71,6 +72,11 @@ N_hist = len(datasamples[datasamples.keys()[0]]["hname"])
 N_bkgsamples = len(bkgsamples)
 
 for i in range(0, N_hist):
+  if "Ch0" in datasamples[datasamples.keys()[0]]["hname"][i]:
+    mode = 0
+  else:
+    mode = 1 
+
   hs = THStack()
   #l = TLegend(0.30, 0.99 - 0.8 * N_bkgsamples / 20., 0.89, 0.85)
   l = TLegend(0.15,0.71,0.89,0.87)
@@ -94,7 +100,7 @@ for i in range(0, N_hist):
     else: 
       l.AddEntry(h_tmp, bkgsamples[fname]["name"]  ,"F")
     ## normalization
-    scale = datasamples[datasamples.keys()[0]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
+    scale = datasamples[datasamples.keys()[mode]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
     h_tmp.Scale(scale)
     numevt = h_tmp.Integral()
     rawevt = h_tmp.GetEntries()
@@ -104,7 +110,7 @@ for i in range(0, N_hist):
     k = k+1 
 
   c = TCanvas("c_"+"{}".format(i),"c",1)
-  h_data = datasamples[datasamples.keys()[0]]["file"].Get(datasamples[datasamples.keys()[0]]["hname"][i])
+  h_data = datasamples[datasamples.keys()[mode]]["file"].Get(datasamples[datasamples.keys()[mode]]["hname"][i])
   h_data.SetMarkerStyle(20)
   h_data.SetMarkerSize(0.3)
   max_data = h_data.GetMaximum()
@@ -138,7 +144,7 @@ for i in range(0, N_hist):
   print "ntotal = " , "{0:.6g}".format(ntotalbkg)
   print "ndata = " , "{0:.0f}".format(ndata)
 
-  c.Print("c_"+datasamples[datasamples.keys()[0]]["hname"][i]+".pdf")
+  c.Print("c_"+datasamples[datasamples.keys()[mode]]["hname"][i]+".pdf")
   filename = "result.pdf"
   if i == 0 and N_hist > 1:
     c.Print( (filename+"(") )
