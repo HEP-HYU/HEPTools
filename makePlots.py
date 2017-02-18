@@ -5,6 +5,8 @@ import ROOT
 
 from style import *
 
+log = True
+
 from collections import OrderedDict
 datasamples=OrderedDict()
 bkgsamples=OrderedDict()
@@ -32,12 +34,6 @@ def AddBkg(file, name, color, xsection):
   tmp["file"] = f
   tmp["hname"] = [x.GetName() for x in f.GetListOfKeys()]
   tmp["hname"].remove("EventInfo")
-
-  #debug
-  #N_h = len(tmp["hname"])
-  tmp_h = f.Get(tmp["hname"][0])
-  tmp_n = tmp_h.Integral()
-  print fname, " : ", name, " : ", tmp["hname"][0], " : " , tmp_n
 
   h = f.Get("EventInfo")
   nevt = h.GetBinContent(2)
@@ -77,6 +73,8 @@ for i in range(0, N_hist):
   else:
     mode = 1 
 
+  hnames = datasamples[datasamples.keys()[mode]]["hname"][i].split("_")
+
   hs = THStack()
   #l = TLegend(0.30, 0.99 - 0.8 * N_bkgsamples / 20., 0.89, 0.85)
   l = TLegend(0.15,0.71,0.89,0.87)
@@ -90,35 +88,48 @@ for i in range(0, N_hist):
   for fname in bkgsamples.keys():
     h_tmp = bkgsamples[fname]["file"].Get(bkgsamples[fname]["hname"][i])
     h_tmp.SetFillColor(bkgsamples[fname]["col"])
+    ## normalization
+    scale = datasamples[datasamples.keys()[mode]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
+    h_tmp.Scale(scale)
     ## check if the sample is the same as previous process. 
     if k < N_bkgsamples-1 :
       post_name = bkgsamples.keys()[k+1]
       if bkgsamples[fname]["name"] is bkgsamples[post_name]["name"]:
-        bkgsamples[fname]["file"].Get(bkgsamples[fname]["hname"][i]).SetLineColor(bkgsamples[fname]["col"]) 
+        h_tmp.SetLineColor(bkgsamples[fname]["col"]) 
       else:
         l.AddEntry(h_tmp, bkgsamples[fname]["name"]  ,"F") 
     else: 
       l.AddEntry(h_tmp, bkgsamples[fname]["name"]  ,"F")
-    ## normalization
-    scale = datasamples[datasamples.keys()[mode]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
-    h_tmp.Scale(scale)
+ 
+    ## print out number of events
     numevt = h_tmp.Integral()
     rawevt = h_tmp.GetEntries()
     ntotalbkg = ntotalbkg + numevt
-    print fname, " : ", bkgsamples[fname]["name"], " = ", "{0:.6g}".format(numevt), " raw : ", "{0:.1g}".format(rawevt), " scale : " ,"{0:.1g}".format(scale)  
+    print fname, " : ", bkgsamples[fname]["name"], " = ", "{0:.5g}".format(numevt), " scale : " ,"{0:.1g}".format(scale)  
+   
+    ## Add to Stack
     hs.Add( h_tmp )
     k = k+1 
 
   c = TCanvas("c_"+"{}".format(i),"c",1)
+  if log:
+    c.SetLogy()
+
   h_data = datasamples[datasamples.keys()[mode]]["file"].Get(datasamples[datasamples.keys()[mode]]["hname"][i])
   h_data.SetMarkerStyle(20)
   h_data.SetMarkerSize(0.3)
   max_data = h_data.GetMaximum()
   max_hs = hs.GetMaximum()
+  maxfrac = 0.5
+  if log :
+    if max_data > 100000:
+      maxfrac = 1000 
+    else:
+      maxfrac = 100
   if max_hs > max_data :
-    h_data.SetMaximum(max_hs+max_hs*0.5)
+    h_data.SetMaximum(max_hs+max_hs*maxfrac)
   else:
-    h_data.SetMaximum(max_data+max_data*0.5)
+    h_data.SetMaximum(max_data+max_data*maxfrac)
   h_data.Draw("p")
   h_data.SetTitle("")
   h_data.GetYaxis().SetTitle("Entries")
@@ -144,8 +155,13 @@ for i in range(0, N_hist):
   print "ntotal = " , "{0:.6g}".format(ntotalbkg)
   print "ndata = " , "{0:.0f}".format(ndata)
 
-  c.Print("c_"+datasamples[datasamples.keys()[mode]]["hname"][i]+".pdf")
-  filename = "result.pdf"
+  logname = ""
+  if log:
+    logname = "_log"
+
+  c.Print(datasamples[datasamples.keys()[mode]]["hname"][i]+logname+".pdf")
+  h_data.SetTitle(hnames[2]+"_"+hnames[3])
+  filename = "result"+logname+".pdf"
   if i == 0 and N_hist > 1:
     c.Print( (filename+"(") )
   elif i > 0 and i == N_hist-1:
