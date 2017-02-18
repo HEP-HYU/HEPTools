@@ -18,8 +18,7 @@
 #include <TH1D.h>
 // Headers needed by this particular selector
 #include <vector>
-
-
+#include <TLorentzVector.h>
 
 class MyAnalysis : public TSelector {
 public :
@@ -27,9 +26,9 @@ public :
    TTree          *fChain = 0;   //!pointer to the analyzed TTree or TChain
 
    // Readers to access the data (delete the ones you do not need).
-   //TTreeReaderValue<Int_t> Event = {fReader, "event"};
-   //TTreeReaderValue<Int_t> Run = {fReader, "run"};
-   //TTreeReaderValue<Int_t> Lumi_Number = {fReader, "luminumber"};
+   //TTreeReaderValue<Int_t> event = {fReader, "event"};
+   //TTreeReaderValue<Int_t> run = {fReader, "run"};
+   //TTreeReaderValue<Int_t> luminumber = {fReader, "luminumber"};
    TTreeReaderValue<Float_t> genWeight = {fReader, "genweight"};
    TTreeReaderValue<Int_t> GoodPV = {fReader, "GoodPV"};
    TTreeReaderValue<Int_t> channel = {fReader, "channel"};
@@ -56,7 +55,7 @@ public :
    TTreeReaderArray<float> jet_SF_CSV = {fReader, "jet_SF_CSV"};
    TTreeReaderArray<float> jet_CvsL = {fReader, "jet_CvsL"};
    TTreeReaderArray<float> jet_CvsB = {fReader, "jet_CvsB"};
-   //TTreeReaderValue<Int_t> jet_number = {fReader, "jet_Number"};
+   //TTreeReaderValue<Int_t> jet_number = {fReader, "jet_number"};
    TTreeReaderArray<int> jet_partonFlavour = {fReader, "jet_partonFlavour"};
    TTreeReaderArray<int> jet_hadronFlavour = {fReader, "jet_hadronFlavour"};
    TTreeReaderArray<float> jet_JES_Up = {fReader, "jet_JES_Up"};
@@ -119,14 +118,17 @@ public :
    virtual TList  *GetOutputList() const { return fOutput; }
    virtual void    SlaveTerminate();
    virtual void    Terminate();
+   double transverseMass(const TLorentzVector & l, const TLorentzVector & nu); 
 
    ClassDef(MyAnalysis,0);
 
-   TH1D *h_NJet[2][4];
-   TH1D *h_NBJet_CSVv2M[2][4];
-   TH1D *h_NBJet_CSVv2T[2][4];
-   TH1D *h_NCJet_M[2][4];
-   TH1D *h_MET[2][4];
+   TH1D *h_NJet[2][5];
+   TH1D *h_NBJetCSVv2M[2][5];
+   TH1D *h_NBJetCSVv2T[2][5];
+   TH1D *h_NCJetM[2][5];
+   TH1D *h_MET[2][5];
+   TH1D *h_WMass[2][5];
+
 
 };
 

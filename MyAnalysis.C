@@ -28,7 +28,6 @@
 #include "MyAnalysis.h"
 #include <TH2.h>
 #include <TStyle.h>
-#include <TLorentzVector.h>
 
 void MyAnalysis::Begin(TTree * /*tree*/)
 {
@@ -49,33 +48,38 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
    TString option = GetOption();
    cout << "SlaveBegin" << endl;
    for(int ich=0; ich < 2; ich++){
-     for(int i=0; i < 4; i++){
+     for(int i=0; i < 5; i++){
      
        h_NJet[ich][i] = new TH1D(Form("h_NJet_Ch%i_S%i_%s",ich,i,option.Data()), "Number of jets", 14, 0, 14);
        h_NJet[ich][i]->SetXTitle("Jet Multiplicity");
        h_NJet[ich][i]->Sumw2();
        fOutput->Add(h_NJet[ich][i]);
      
-       h_NBJet_CSVv2M[ich][i] = new TH1D(Form("h_NBJet_CSVv2M_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (medium)", 6, 0, 6);
-       h_NBJet_CSVv2M[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2M)");
-       h_NBJet_CSVv2M[ich][i]->Sumw2();
-       fOutput->Add(h_NBJet_CSVv2M[ich][i]);
+       h_NBJetCSVv2M[ich][i] = new TH1D(Form("h_NBJetCSVv2M_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (medium)", 6, 0, 6);
+       h_NBJetCSVv2M[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2M)");
+       h_NBJetCSVv2M[ich][i]->Sumw2();
+       fOutput->Add(h_NBJetCSVv2M[ich][i]);
 
-       h_NBJet_CSVv2T[ich][i] = new TH1D(Form("h_NBJet_CSVv2T_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (tight)", 6, 0, 6);
-       h_NBJet_CSVv2T[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2T)");
-       h_NBJet_CSVv2T[ich][i]->Sumw2();
-       fOutput->Add(h_NBJet_CSVv2T[ich][i]);
+       h_NBJetCSVv2T[ich][i] = new TH1D(Form("h_NBJetCSVv2T_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (tight)", 6, 0, 6);
+       h_NBJetCSVv2T[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2T)");
+       h_NBJetCSVv2T[ich][i]->Sumw2();
+       fOutput->Add(h_NBJetCSVv2T[ich][i]);
 
-       h_NCJet_M[ich][i] = new TH1D(Form("h_NCJet_M_Ch%i_S%i_%s",ich,i,option.Data()), "Number of c tagged jets", 6, 0, 6);
-       h_NCJet_M[ich][i]->SetXTitle("c-tagged Jet Multiplicity (M)");
-       h_NCJet_M[ich][i]->Sumw2();
-       fOutput->Add(h_NCJet_M[ich][i]);  
+       h_NCJetM[ich][i] = new TH1D(Form("h_NCJetM_Ch%i_S%i_%s",ich,i,option.Data()), "Number of c tagged jets", 6, 0, 6);
+       h_NCJetM[ich][i]->SetXTitle("c-tagged Jet Multiplicity (M)");
+       h_NCJetM[ich][i]->Sumw2();
+       fOutput->Add(h_NCJetM[ich][i]);  
 
        h_MET[ich][i] = new TH1D(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()), "MET", 40,0,400);
        h_MET[ich][i]->SetXTitle("MET (GeV)");
        h_MET[ich][i]->Sumw2();
        fOutput->Add(h_MET[ich][i]);
-
+   
+       h_WMass[ich][i] = new TH1D(Form("h_WMass_Ch%i_S%i_%s",ich,i,option.Data()), "WMass", 32 ,0 ,160);
+       h_WMass[ich][i]->SetXTitle("Transverse Mass (GeV)");
+       h_WMass[ich][i]->Sumw2();
+       fOutput->Add(h_WMass[ich][i]);
+ 
      }
    }
 } 
@@ -115,8 +119,16 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    int nbjets_t = 0; 
    int ncjets_m = 0; 
 
+   TLorentzVector p4met;
+   double met = *MET;
+   double met_phi = *MET_phi;
+   double met_eta = TMath::Sqrt(met*met - met_phi*met_phi);
+   p4met.SetPtEtaPhiE( met, met_eta, met_phi, met);
+
    TLorentzVector lepton;
    lepton.SetPtEtaPhiE(*lepton_pT, *lepton_eta, *lepton_phi, *lepton_E);
+
+   double transverseM = transverseMass( lepton, p4met);
 
    //Event selection 
    bool passmuon = (mode == 0) && (lepton.Pt() > 30);
@@ -139,34 +151,47 @@ Bool_t MyAnalysis::Process(Long64_t entry)
      }  
 
      h_NJet[mode][0]->Fill(njets, EventWeight);
-     h_NBJet_CSVv2M[mode][0]->Fill(nbjets_m, EventWeight);
-     h_NBJet_CSVv2T[mode][0]->Fill(nbjets_t, EventWeight);
-     h_NCJet_M[mode][0]->Fill(ncjets_m, EventWeight);
+     h_NBJetCSVv2M[mode][0]->Fill(nbjets_m, EventWeight);
+     h_NBJetCSVv2T[mode][0]->Fill(nbjets_t, EventWeight);
+     h_NCJetM[mode][0]->Fill(ncjets_m, EventWeight);
      h_MET[mode][0]->Fill(*MET, EventWeight);
+     h_WMass[mode][0]->Fill(transverseM, EventWeight);
 
-     if( njets >= 6) {
+     if( njets >= 4) {
        h_NJet[mode][1]->Fill(njets, EventWeight);
-       h_NBJet_CSVv2M[mode][1]->Fill(nbjets_m, EventWeight);
-       h_NBJet_CSVv2T[mode][1]->Fill(nbjets_t, EventWeight);
-       h_NCJet_M[mode][1]->Fill(ncjets_m, EventWeight);
+       h_NBJetCSVv2M[mode][1]->Fill(nbjets_m, EventWeight);
+       h_NBJetCSVv2T[mode][1]->Fill(nbjets_t, EventWeight);
+       h_NCJetM[mode][1]->Fill(ncjets_m, EventWeight);
        h_MET[mode][1]->Fill(*MET, EventWeight);
+       h_WMass[mode][1]->Fill(transverseM, EventWeight);
 
        if( nbjets_m >=2 ){
          h_NJet[mode][2]->Fill(njets, EventWeight);
-         h_NBJet_CSVv2M[mode][2]->Fill(nbjets_m, EventWeight);
-         h_NBJet_CSVv2T[mode][2]->Fill(nbjets_t, EventWeight);
-         h_NCJet_M[mode][2]->Fill(ncjets_m, EventWeight);
+         h_NBJetCSVv2M[mode][2]->Fill(nbjets_m, EventWeight);
+         h_NBJetCSVv2T[mode][2]->Fill(nbjets_t, EventWeight);
+         h_NCJetM[mode][2]->Fill(ncjets_m, EventWeight);
          h_MET[mode][2]->Fill(*MET, EventWeight);
+         h_WMass[mode][2]->Fill(transverseM, EventWeight);
        }
 
        if( nbjets_t >=2 ){
          h_NJet[mode][3]->Fill(njets, EventWeight);
-         h_NBJet_CSVv2M[mode][3]->Fill(nbjets_m, EventWeight);
-         h_NBJet_CSVv2T[mode][3]->Fill(nbjets_t, EventWeight);
-         h_NCJet_M[mode][3]->Fill(ncjets_m, EventWeight);
+         h_NBJetCSVv2M[mode][3]->Fill(nbjets_m, EventWeight);
+         h_NBJetCSVv2T[mode][3]->Fill(nbjets_t, EventWeight);
+         h_NCJetM[mode][3]->Fill(ncjets_m, EventWeight);
          h_MET[mode][3]->Fill(*MET, EventWeight);
+         h_WMass[mode][3]->Fill(transverseM, EventWeight);
        }
-   
+  
+     }
+
+     if( njets >= 4 && nbjets_t >=2 ) {
+       h_NJet[mode][4]->Fill(njets, EventWeight);
+       h_NBJetCSVv2M[mode][4]->Fill(nbjets_m, EventWeight);
+       h_NBJetCSVv2T[mode][4]->Fill(nbjets_t, EventWeight);
+       h_NCJetM[mode][4]->Fill(ncjets_m, EventWeight);
+       h_MET[mode][4]->Fill(*MET, EventWeight);
+       h_WMass[mode][4]->Fill(transverseM, EventWeight);
      }
 
    }
@@ -195,12 +220,13 @@ void MyAnalysis::Terminate()
    TFile * out = TFile::Open(Form("hist_%s.root",option.Data()),"RECREATE");
 
    for(int ich = 0; ich < 2; ich++){
-     for(int i = 0; i < 4; i++){
+     for(int i = 0; i < 5; i++){
        fOutput->FindObject(Form("h_NJet_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NBJet_CSVv2M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NBJet_CSVv2T_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NCJet_M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_NBJetCSVv2M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_NBJetCSVv2T_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_NCJetM_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_WMass_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
      }
    }
 
@@ -208,5 +234,17 @@ void MyAnalysis::Terminate()
 
    out->Write();
    out->Close();
+
+}
+
+double MyAnalysis::transverseMass( const TLorentzVector & lepton, const TLorentzVector & met){
+
+  TLorentzVector leptonT(lepton.Px(),lepton.Py(),0.,lepton.E()*TMath::Sin(lepton.Theta()));
+  TLorentzVector metT(met.Px(), met.Py(), 0, met.E());
+
+  TLorentzVector sumT=leptonT+metT;
+  double out = TMath::Sqrt( sumT.M2() );
+
+  return out;
 
 }
