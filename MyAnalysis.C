@@ -79,6 +79,17 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
        h_WMass[ich][i]->SetXTitle("Transverse Mass (GeV)");
        h_WMass[ich][i]->Sumw2();
        fOutput->Add(h_WMass[ich][i]);
+
+       h_LepIso[ich][i] = new TH1D(Form("h_LepIso_Ch%i_S%i_%s",ich,i,option.Data()), "LepIso", 100 ,0 ,1);
+       h_LepIso[ich][i]->SetXTitle("Relative Isolation");
+       h_LepIso[ich][i]->Sumw2();
+       fOutput->Add(h_LepIso[ich][i]);
+
+       h_LepIsoQCD[ich][i] = new TH1D(Form("h_LepIsoQCD_Ch%i_S%i_%s",ich,i,option.Data()), "LepIsoQCD", 100 ,0 ,1);
+       h_LepIsoQCD[ich][i]->SetXTitle("Relative Isolation");
+       h_LepIsoQCD[ich][i]->Sumw2();
+       fOutput->Add(h_LepIsoQCD[ich][i]);
+
  
      }
    }
@@ -113,6 +124,8 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    float puweight = PUWeight[0];
    float EventWeight = puweight*genweight;
 
+   float relIso = *lepton_relIso; 
+
    //Object selection
    int njets = 0;
    int nbjets_m = 0; 
@@ -129,6 +142,12 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    lepton.SetPtEtaPhiE(*lepton_pT, *lepton_eta, *lepton_phi, *lepton_E);
 
    double transverseM = transverseMass( lepton, p4met);
+
+   bool QCD = transverseM < 20;
+   bool QCDestimation = false;
+   bool isIso = false; 
+   //if( QCDestimation ) isIso = *lepton_isIso ;
+
 
    //Event selection 
    bool passmuon = (mode == 0) && (lepton.Pt() > 30);
@@ -150,48 +169,68 @@ Bool_t MyAnalysis::Process(Long64_t entry)
 
      }  
 
-     h_NJet[mode][0]->Fill(njets, EventWeight);
-     h_NBJetCSVv2M[mode][0]->Fill(nbjets_m, EventWeight);
-     h_NBJetCSVv2T[mode][0]->Fill(nbjets_t, EventWeight);
-     h_NCJetM[mode][0]->Fill(ncjets_m, EventWeight);
-     h_MET[mode][0]->Fill(*MET, EventWeight);
-     h_WMass[mode][0]->Fill(transverseM, EventWeight);
+     if( !isIso ){
+       h_NJet[mode][0]->Fill(njets, EventWeight);
+       h_NBJetCSVv2M[mode][0]->Fill(nbjets_m, EventWeight);
+       h_NBJetCSVv2T[mode][0]->Fill(nbjets_t, EventWeight);
+       h_NCJetM[mode][0]->Fill(ncjets_m, EventWeight);
+       h_MET[mode][0]->Fill(*MET, EventWeight);
+       h_WMass[mode][0]->Fill(transverseM, EventWeight);
+     }
+     h_LepIso[mode][0]->Fill(relIso, EventWeight);
+     if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
 
      if( njets >= 4) {
-       h_NJet[mode][1]->Fill(njets, EventWeight);
-       h_NBJetCSVv2M[mode][1]->Fill(nbjets_m, EventWeight);
-       h_NBJetCSVv2T[mode][1]->Fill(nbjets_t, EventWeight);
-       h_NCJetM[mode][1]->Fill(ncjets_m, EventWeight);
-       h_MET[mode][1]->Fill(*MET, EventWeight);
-       h_WMass[mode][1]->Fill(transverseM, EventWeight);
+       if( !isIso ){
+         h_NJet[mode][1]->Fill(njets, EventWeight);
+         h_NBJetCSVv2M[mode][1]->Fill(nbjets_m, EventWeight);
+         h_NBJetCSVv2T[mode][1]->Fill(nbjets_t, EventWeight);
+         h_NCJetM[mode][1]->Fill(ncjets_m, EventWeight);
+         h_MET[mode][1]->Fill(*MET, EventWeight);
+         h_WMass[mode][1]->Fill(transverseM, EventWeight);
+       }
+       h_LepIso[mode][1]->Fill(relIso, EventWeight);
+       if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
 
        if( nbjets_m >=2 ){
-         h_NJet[mode][2]->Fill(njets, EventWeight);
-         h_NBJetCSVv2M[mode][2]->Fill(nbjets_m, EventWeight);
-         h_NBJetCSVv2T[mode][2]->Fill(nbjets_t, EventWeight);
-         h_NCJetM[mode][2]->Fill(ncjets_m, EventWeight);
-         h_MET[mode][2]->Fill(*MET, EventWeight);
-         h_WMass[mode][2]->Fill(transverseM, EventWeight);
+         if( !isIso ){
+           h_NJet[mode][2]->Fill(njets, EventWeight);
+           h_NBJetCSVv2M[mode][2]->Fill(nbjets_m, EventWeight);
+           h_NBJetCSVv2T[mode][2]->Fill(nbjets_t, EventWeight);
+           h_NCJetM[mode][2]->Fill(ncjets_m, EventWeight);
+           h_MET[mode][2]->Fill(*MET, EventWeight);
+           h_WMass[mode][2]->Fill(transverseM, EventWeight);
+         }
+         h_LepIso[mode][2]->Fill(relIso, EventWeight);
+         if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
        }
 
        if( nbjets_t >=2 ){
-         h_NJet[mode][3]->Fill(njets, EventWeight);
-         h_NBJetCSVv2M[mode][3]->Fill(nbjets_m, EventWeight);
-         h_NBJetCSVv2T[mode][3]->Fill(nbjets_t, EventWeight);
-         h_NCJetM[mode][3]->Fill(ncjets_m, EventWeight);
-         h_MET[mode][3]->Fill(*MET, EventWeight);
-         h_WMass[mode][3]->Fill(transverseM, EventWeight);
+         if( !isIso ){
+           h_NJet[mode][3]->Fill(njets, EventWeight);
+           h_NBJetCSVv2M[mode][3]->Fill(nbjets_m, EventWeight);
+           h_NBJetCSVv2T[mode][3]->Fill(nbjets_t, EventWeight);
+           h_NCJetM[mode][3]->Fill(ncjets_m, EventWeight);
+           h_MET[mode][3]->Fill(*MET, EventWeight);
+           h_WMass[mode][3]->Fill(transverseM, EventWeight);
+         }
+         h_LepIso[mode][3]->Fill(relIso, EventWeight);
+         if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
        }
   
      }
 
      if( njets >= 4 && nbjets_t >=2 ) {
-       h_NJet[mode][4]->Fill(njets, EventWeight);
-       h_NBJetCSVv2M[mode][4]->Fill(nbjets_m, EventWeight);
-       h_NBJetCSVv2T[mode][4]->Fill(nbjets_t, EventWeight);
-       h_NCJetM[mode][4]->Fill(ncjets_m, EventWeight);
-       h_MET[mode][4]->Fill(*MET, EventWeight);
-       h_WMass[mode][4]->Fill(transverseM, EventWeight);
+       if( !isIso ){
+         h_NJet[mode][4]->Fill(njets, EventWeight);
+         h_NBJetCSVv2M[mode][4]->Fill(nbjets_m, EventWeight);
+         h_NBJetCSVv2T[mode][4]->Fill(nbjets_t, EventWeight);
+         h_NCJetM[mode][4]->Fill(ncjets_m, EventWeight);
+         h_MET[mode][4]->Fill(*MET, EventWeight);
+         h_WMass[mode][4]->Fill(transverseM, EventWeight);
+       }
+       h_LepIso[mode][4]->Fill(relIso, EventWeight);
+       if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
      }
 
    }
@@ -227,10 +266,10 @@ void MyAnalysis::Terminate()
        fOutput->FindObject(Form("h_NCJetM_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_WMass_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_LepIso_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_LepIsoQCD_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
      }
    }
-
-   //fOutput->FindObject("ttbbLepJets/EventInfo")->Write();
 
    out->Write();
    out->Close();

@@ -40,6 +40,8 @@ public :
    TTreeReaderValue<Float_t> lepton_phi = {fReader, "lepton_phi"};
    TTreeReaderValue<Float_t> lepton_E = {fReader, "lepton_E"};
    TTreeReaderValue<Float_t> lepton_LES = {fReader, "lepton_LES"};
+   TTreeReaderValue<Float_t> lepton_relIso = {fReader, "lepton_relIso"};
+   //TTreeReaderValue<bool> lepton_isIso = {fReader, "lepton_isIso"};
    TTreeReaderArray<float> lepton_SF = {fReader, "lepton_SF"};
    TTreeReaderArray<float> jet_pT = {fReader, "jet_pT"};
    TTreeReaderArray<float> jet_eta = {fReader, "jet_eta"};
@@ -128,7 +130,8 @@ public :
    TH1D *h_NCJetM[2][5];
    TH1D *h_MET[2][5];
    TH1D *h_WMass[2][5];
-
+   TH1D *h_LepIso[2][5];
+   TH1D *h_LepIsoQCD[2][5];
 
 };
 
