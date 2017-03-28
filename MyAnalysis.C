@@ -190,7 +190,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
          h_WMass[mode][1]->Fill(transverseM, EventWeight);
        }
        h_LepIso[mode][1]->Fill(relIso, EventWeight);
-       if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
+       if( QCD ) h_LepIsoQCD[mode][1]->Fill(relIso, EventWeight);
 
        if( nbjets_m >=2 ){
          if( !isIso ){
@@ -202,7 +202,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
            h_WMass[mode][2]->Fill(transverseM, EventWeight);
          }
          h_LepIso[mode][2]->Fill(relIso, EventWeight);
-         if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
+         if( QCD ) h_LepIsoQCD[mode][2]->Fill(relIso, EventWeight);
        }
 
        if( nbjets_t >=2 ){
@@ -215,7 +215,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
            h_WMass[mode][3]->Fill(transverseM, EventWeight);
          }
          h_LepIso[mode][3]->Fill(relIso, EventWeight);
-         if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
+         if( QCD ) h_LepIsoQCD[mode][3]->Fill(relIso, EventWeight);
        }
   
      }
@@ -230,7 +230,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
          h_WMass[mode][4]->Fill(transverseM, EventWeight);
        }
        h_LepIso[mode][4]->Fill(relIso, EventWeight);
-       if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
+       if( QCD ) h_LepIsoQCD[mode][4]->Fill(relIso, EventWeight);
      }
 
    }
