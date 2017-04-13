@@ -5,7 +5,8 @@ import ROOT
 
 from style import *
 
-log = True
+QCDestimate = True 
+log = False 
 
 from collections import OrderedDict
 datasamples=OrderedDict()
@@ -30,13 +31,16 @@ def AddBkg(file, name, color, xsection):
   f = TFile(file)
   fnames = f.GetName().split('.')
   fname = fnames[0]
+
+  nevt = 1
  
   tmp["file"] = f
   tmp["hname"] = [x.GetName() for x in f.GetListOfKeys()]
-  tmp["hname"].remove("EventInfo")
+  if xsection is not 1:
+    tmp["hname"].remove("EventInfo")
+    h = f.Get("EventInfo")
+    nevt = h.GetBinContent(2)
 
-  h = f.Get("EventInfo")
-  nevt = h.GetBinContent(2)
   tmp["total"] = nevt 
   tmp["col"] = color
   tmp["xsection"] = xsection
@@ -62,7 +66,10 @@ AddBkg("hist_tbarWchannel.root","Single t",6, 35.6)
 AddBkg("hist_ww.root","DiBoson",ROOT.kCyan, 118.7)
 AddBkg("hist_wz.root","DiBoson",ROOT.kCyan, 47.13)
 AddBkg("hist_zz.root","DiBoson",ROOT.kCyan, 16.523)
+AddBkg("hist_qcd.root","QCD",ROOT.kGray, 1)
 #### 
+
+qcd = []
 
 N_hist = len(datasamples[datasamples.keys()[0]]["hname"])
 N_bkgsamples = len(bkgsamples)
@@ -75,6 +82,11 @@ for i in range(0, N_hist):
 
   hnames = datasamples[datasamples.keys()[mode]]["hname"][i].split("_")
 
+  ##printHistName = "LepIsoQCD"
+
+  ##if hnames[1] == printHistName :
+  ##  print hnames[1], " ", hnames[2], " ", hnames[3]  
+
   hs = THStack()
   #l = TLegend(0.30, 0.99 - 0.8 * N_bkgsamples / 20., 0.89, 0.85)
   l = TLegend(0.15,0.71,0.89,0.87)
@@ -83,14 +95,32 @@ for i in range(0, N_hist):
   l.SetLineColor(0);
   l.SetFillColor(0);
 
+  h_data = datasamples[datasamples.keys()[mode]]["file"].Get(datasamples[datasamples.keys()[mode]]["hname"][i])
+  nbins = h_data.GetNbinsX()
+  h_data.AddBinContent( nbins, h_data.GetBinContent( nbins+1 ) )
+
+  h_sub = h_data.Clone("h_sub") 
+  if QCDestimate : 
+    h_sub.SetName(hnames[0]+"_"+hnames[1]+"_"+hnames[2]+"_"+hnames[3]+"_qcd")
+
   ntotalbkg = 0
   k = 0
   for fname in bkgsamples.keys():
     h_tmp = bkgsamples[fname]["file"].Get(bkgsamples[fname]["hname"][i])
+    nbins = h_tmp.GetNbinsX()
+    h_tmp.AddBinContent( nbins, h_tmp.GetBinContent( nbins+1 ) ) 
     h_tmp.SetFillColor(bkgsamples[fname]["col"])
     ## normalization
-    scale = datasamples[datasamples.keys()[mode]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
+    scale = 1.0
+    if bkgsamples[fname]["name"] == "QCD": 
+      scale = 1.0
+    else: 
+      scale = datasamples[datasamples.keys()[mode]]["lumi"]/(bkgsamples[fname]["total"]/bkgsamples[fname]["xsection"])
+
     h_tmp.Scale(scale)
+
+    if bkgsamples[fname]["name"] is not "QCD" and QCDestimate: 
+      h_sub.Add(h_tmp, -1)
     ## check if the sample is the same as previous process. 
     if k < N_bkgsamples-1 :
       post_name = bkgsamples.keys()[k+1]
@@ -105,17 +135,20 @@ for i in range(0, N_hist):
     numevt = h_tmp.Integral()
     rawevt = h_tmp.GetEntries()
     ntotalbkg = ntotalbkg + numevt
-    print fname, " : ", bkgsamples[fname]["name"], " = ", "{0:.5g}".format(numevt), " scale : " ,"{0:.1g}".format(scale)  
+    if hnames[1] == printHistName:
+      print fname, " : ", bkgsamples[fname]["name"], " = ", "{0:.5g}".format(numevt) # " scale : " ,"{0:.1g}".format(scale)  
    
     ## Add to Stack
     hs.Add( h_tmp )
     k = k+1 
 
+  if QCDestimate:
+    qcd.append(h_sub)
+
   c = TCanvas("c_"+"{}".format(i),"c",1)
   if log:
     c.SetLogy()
 
-  h_data = datasamples[datasamples.keys()[mode]]["file"].Get(datasamples[datasamples.keys()[mode]]["hname"][i])
   h_data.SetMarkerStyle(20)
   h_data.SetMarkerSize(0.3)
   max_data = h_data.GetMaximum()
@@ -152,8 +185,11 @@ for i in range(0, N_hist):
   label.Draw("same")
 
   ndata = h_data.Integral()
-  print "ntotal = " , "{0:.6g}".format(ntotalbkg)
-  print "ndata = " , "{0:.0f}".format(ndata)
+  nsub = ndata-ntotalbkg
+  if hnames[1] == printHistName:
+    print "ntotal = " , "{0:.6g}".format(ntotalbkg)
+    print "ndata = " , "{0:.0f}".format(ndata)
+    print "nsub = ", "{0:.6g}".format(nsub)
 
   logname = ""
   if log:
@@ -169,3 +205,15 @@ for i in range(0, N_hist):
   else:
     c.Print(filename)
 
+if QCDestimate :
+ f = ROOT.TFile("hist_qcd.root", "recreate")
+ f.cd()
+
+ N_qcd = len(qcd)
+
+ for i in range(0,N_qcd):
+   qcd[i].Write()
+
+ f.cd()
+ f.Write()
+ f.Close()
