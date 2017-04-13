@@ -36,7 +36,7 @@ void MyAnalysis::Begin(TTree * /*tree*/)
    // The tree argument is deprecated (on PROOF 0 is passed).
 
    TString option = GetOption();
-
+   process = option.Data();
 }
 
 void MyAnalysis::SlaveBegin(TTree * /*tree*/)
@@ -50,17 +50,17 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
    for(int ich=0; ich < 2; ich++){
      for(int i=0; i < 5; i++){
      
-       h_NJet[ich][i] = new TH1D(Form("h_NJet_Ch%i_S%i_%s",ich,i,option.Data()), "Number of jets", 14, 0, 14);
+       h_NJet[ich][i] = new TH1D(Form("h_NJet_Ch%i_S%i_%s",ich,i,option.Data()), "Number of jets", 12, 0, 12);
        h_NJet[ich][i]->SetXTitle("Jet Multiplicity");
        h_NJet[ich][i]->Sumw2();
        fOutput->Add(h_NJet[ich][i]);
      
-       h_NBJetCSVv2M[ich][i] = new TH1D(Form("h_NBJetCSVv2M_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (medium)", 6, 0, 6);
+       h_NBJetCSVv2M[ich][i] = new TH1D(Form("h_NBJetCSVv2M_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (medium)", 5, 0, 5);
        h_NBJetCSVv2M[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2M)");
        h_NBJetCSVv2M[ich][i]->Sumw2();
        fOutput->Add(h_NBJetCSVv2M[ich][i]);
 
-       h_NBJetCSVv2T[ich][i] = new TH1D(Form("h_NBJetCSVv2T_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (tight)", 6, 0, 6);
+       h_NBJetCSVv2T[ich][i] = new TH1D(Form("h_NBJetCSVv2T_Ch%i_S%i_%s",ich,i,option.Data()), "Number of b tagged jets (tight)", 5, 0, 5);
        h_NBJetCSVv2T[ich][i]->SetXTitle("b-tagged Jet Multiplicity (CSVv2T)");
        h_NBJetCSVv2T[ich][i]->Sumw2();
        fOutput->Add(h_NBJetCSVv2T[ich][i]);
@@ -80,6 +80,11 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
        h_WMass[ich][i]->Sumw2();
        fOutput->Add(h_WMass[ich][i]);
 
+       h_DPhi[ich][i] = new TH1D(Form("h_DPhi_Ch%i_S%i_%s",ich,i,option.Data()), "DPhi", 64 ,0 ,3.2);
+       h_DPhi[ich][i]->SetXTitle("DPhi (GeV)");
+       h_DPhi[ich][i]->Sumw2();
+       fOutput->Add(h_DPhi[ich][i]);
+
        h_LepIso[ich][i] = new TH1D(Form("h_LepIso_Ch%i_S%i_%s",ich,i,option.Data()), "LepIso", 100 ,0 ,1);
        h_LepIso[ich][i]->SetXTitle("Relative Isolation");
        h_LepIso[ich][i]->Sumw2();
@@ -90,7 +95,7 @@ void MyAnalysis::SlaveBegin(TTree * /*tree*/)
        h_LepIsoQCD[ich][i]->Sumw2();
        fOutput->Add(h_LepIsoQCD[ich][i]);
 
- 
+
      }
    }
 } 
@@ -120,9 +125,11 @@ Bool_t MyAnalysis::Process(Long64_t entry)
 
    if( mode > 2) return kTRUE;
 
+   float lep_SF = 1.0;
+   if( process.Contains("Data") ) lep_SF = lepton_SF[0];
    float genweight = *genWeight;
    float puweight = PUWeight[0];
-   float EventWeight = puweight*genweight;
+   float EventWeight = puweight*genweight*lep_SF;
 
    float relIso = *lepton_relIso; 
 
@@ -135,19 +142,21 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    TLorentzVector p4met;
    double met = *MET;
    double met_phi = *MET_phi;
-   double met_eta = TMath::Sqrt(met*met - met_phi*met_phi);
-   p4met.SetPtEtaPhiE( met, met_eta, met_phi, met);
+   double apt = TMath::Abs(met);
+   double met_x =  apt*TMath::Cos(met_phi);
+   double met_y =  apt*TMath::Sin(met_phi);
+   p4met.SetPxPyPzE( met_x, met_y, 0, met);
 
    TLorentzVector lepton;
    lepton.SetPtEtaPhiE(*lepton_pT, *lepton_eta, *lepton_phi, *lepton_E);
 
    double transverseM = transverseMass( lepton, p4met);
+   double dphi = lepton.DeltaPhi(p4met);
 
-   bool QCD = transverseM < 20;
-   bool QCDestimation = false;
+   bool QCD = transverseM < 10 && met < 10 && dphi < 1;
+   bool QCDestimation = true;
    bool isIso = false; 
-   //if( QCDestimation ) isIso = *lepton_isIso ;
-
+   if( QCDestimation ) isIso = *lepton_isIso;
 
    //Event selection 
    bool passmuon = (mode == 0) && (lepton.Pt() > 30);
@@ -176,11 +185,14 @@ Bool_t MyAnalysis::Process(Long64_t entry)
        h_NCJetM[mode][0]->Fill(ncjets_m, EventWeight);
        h_MET[mode][0]->Fill(*MET, EventWeight);
        h_WMass[mode][0]->Fill(transverseM, EventWeight);
+       h_DPhi[mode][0]->Fill(dphi, EventWeight);
      }
      h_LepIso[mode][0]->Fill(relIso, EventWeight);
      if( QCD ) h_LepIsoQCD[mode][0]->Fill(relIso, EventWeight);
 
-     if( njets >= 4) {
+     int njetscut = 4;
+     if( QCDestimation ) njetscut = 2;
+     if( njets >= njetscut) {
        if( !isIso ){
          h_NJet[mode][1]->Fill(njets, EventWeight);
          h_NBJetCSVv2M[mode][1]->Fill(nbjets_m, EventWeight);
@@ -188,6 +200,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
          h_NCJetM[mode][1]->Fill(ncjets_m, EventWeight);
          h_MET[mode][1]->Fill(*MET, EventWeight);
          h_WMass[mode][1]->Fill(transverseM, EventWeight);
+         h_DPhi[mode][1]->Fill(dphi, EventWeight);
        }
        h_LepIso[mode][1]->Fill(relIso, EventWeight);
        if( QCD ) h_LepIsoQCD[mode][1]->Fill(relIso, EventWeight);
@@ -200,6 +213,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
            h_NCJetM[mode][2]->Fill(ncjets_m, EventWeight);
            h_MET[mode][2]->Fill(*MET, EventWeight);
            h_WMass[mode][2]->Fill(transverseM, EventWeight);
+           h_DPhi[mode][2]->Fill(dphi, EventWeight);
          }
          h_LepIso[mode][2]->Fill(relIso, EventWeight);
          if( QCD ) h_LepIsoQCD[mode][2]->Fill(relIso, EventWeight);
@@ -213,6 +227,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
            h_NCJetM[mode][3]->Fill(ncjets_m, EventWeight);
            h_MET[mode][3]->Fill(*MET, EventWeight);
            h_WMass[mode][3]->Fill(transverseM, EventWeight);
+           h_DPhi[mode][3]->Fill(dphi, EventWeight);
          }
          h_LepIso[mode][3]->Fill(relIso, EventWeight);
          if( QCD ) h_LepIsoQCD[mode][3]->Fill(relIso, EventWeight);
@@ -228,6 +243,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
          h_NCJetM[mode][4]->Fill(ncjets_m, EventWeight);
          h_MET[mode][4]->Fill(*MET, EventWeight);
          h_WMass[mode][4]->Fill(transverseM, EventWeight);
+         h_DPhi[mode][4]->Fill(dphi, EventWeight);
        }
        h_LepIso[mode][4]->Fill(relIso, EventWeight);
        if( QCD ) h_LepIsoQCD[mode][4]->Fill(relIso, EventWeight);
@@ -266,6 +282,7 @@ void MyAnalysis::Terminate()
        fOutput->FindObject(Form("h_NCJetM_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_WMass_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+       fOutput->FindObject(Form("h_DPhi_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_LepIso_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
        fOutput->FindObject(Form("h_LepIsoQCD_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
      }
