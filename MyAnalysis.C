@@ -272,19 +272,18 @@ void MyAnalysis::Terminate()
    // the results graphically or save the results to file.
    TString option = GetOption();
 
+   //write out the histogram at the end automatically if the name has "h_". 
    TFile * out = TFile::Open(Form("hist_%s.root",option.Data()),"RECREATE");
 
-   for(int ich = 0; ich < 2; ich++){
-     for(int i = 0; i < 5; i++){
-       fOutput->FindObject(Form("h_NJet_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NBJetCSVv2M_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NBJetCSVv2T_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_NCJetM_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_MET_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_WMass_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_DPhi_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_LepIso_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
-       fOutput->FindObject(Form("h_LepIsoQCD_Ch%i_S%i_%s",ich,i,option.Data()))->Write();
+   TList * l = GetOutputList();
+   l->Print();
+   TIter next(l);
+   TObject *object = 0;
+   while( ( object = next()) ){
+     const char * name = object->GetName();
+     std::string str(name);
+     if (str.find("h_") !=std::string::npos ){
+       object->Write();
      }
    }
 
