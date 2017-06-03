@@ -126,7 +126,7 @@ Bool_t MyAnalysis::Process(Long64_t entry)
    if( mode > 2) return kTRUE;
 
    float lep_SF = 1.0;
-   if( process.Contains("Data") ) lep_SF = lepton_SF[0];
+   if( !process.Contains("Data") ) lep_SF = lepton_SF[0];
    float genweight = *genWeight;
    float puweight = PUWeight[0];
    float EventWeight = puweight*genweight*lep_SF;
@@ -276,7 +276,6 @@ void MyAnalysis::Terminate()
    TFile * out = TFile::Open(Form("hist_%s.root",option.Data()),"RECREATE");
 
    TList * l = GetOutputList();
-   l->Print();
    TIter next(l);
    TObject *object = 0;
    while( ( object = next()) ){
